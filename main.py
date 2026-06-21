@@ -1,7 +1,7 @@
 import argparse
 from extract_and_clean import extract_resume
 from llm import analyze
-from storage import save, print_history, check_duplicate, compute_jd_hash
+from storage import save, print_history, check_duplicate, compute_jd_hash, update_status
 
 def main():
     parser = argparse.ArgumentParser(description="Match a resume to a job description")
@@ -9,10 +9,17 @@ def main():
     parser.add_argument("--resume",  help="Path to resume PDF")
     parser.add_argument("--company", help="Override company name if not found in JD")
     parser.add_argument("--history", action="store_true", help="Show past results")
+    parser.add_argument("--update-status", nargs=2, metavar=("ID", "STATUS"),
+                    help="Update application status: --update-status <id> <status>")
     args = parser.parse_args()
 
     if args.history:
         print_history()
+        return
+
+    if args.update_status:
+        record_id, new_status = args.update_status
+        update_status(record_id, new_status)
         return
 
     if not args.jd or not args.resume:

@@ -62,3 +62,20 @@ def print_history():
         print(f"Match:   {r['match']} | Score: {r['score']} | Status: {r['status']}")
         print(f"ID:      {r['id']}")
         print(f"{'─' * 60}")
+
+def update_status(record_id, new_status):
+    valid = ["applied", "oa", "interviewing", "offer", "rejected", "ghosted"]
+    if new_status not in valid:
+        print(f"Invalid status. Choose from: {', '.join(valid)}")
+        return
+
+    records = load_all()
+    for record in records:
+        if record["id"] == record_id:
+            record["status"] = new_status
+            with open(RESULTS_FILE, "w") as f:
+                json.dump(records, f, indent=2)
+            print(f"✅ Status updated to '{new_status}'")
+            return
+
+    print("Record not found.")
