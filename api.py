@@ -4,6 +4,14 @@ import uuid
 from datetime import datetime
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import FileResponse
+from extract_and_clean import extract_resume
+from llm import analyze as run_analysis
+from storage import save as save_analysis,load_all
+from pydantic import BaseModel
+
+class AnalyzeRequest(BaseModel):
+    resume_id: str
+    jd_text: str
 
 app = FastAPI()
 
@@ -79,3 +87,37 @@ async def upload_resume(file: UploadFile = File(...), label: str = "default"):
         file.file.close()
     record = save_resume_metadata(file.filename, label)
     return {"message": "File uploaded successfully", "resume": record}
+
+
+# Takes as input resume uuid and job jd
+# Check in resume.json if it exists, if not return error
+# if yes then build a path to file and call extract resume function to extract text from pdf
+# then call analyze function to analyze the text and return the result
+@app.post("/analyze")
+async def analyze_resume(request: AnalyzeRequest):
+
+    with open(RESUMES_FILE, "r") as f:
+        resumes = json.load(f)
+        try:
+            resume_record = next(resume for resume in resumes if resume["id"] == request.resume_id)
+        except StopIteration:
+            raise HTTPException(
+                status_code=404,
+                detail="Resume not found."
+            )
+    RESUME_PATH = os.path.join(UPLOADED_DIRS, resume_record["filename"])
+    if not os.path.exists(RESUME_PATH):
+        raise HTTPException(
+            status_code=404,
+            detail="Resume file not found."
+        )
+    
+    resume_text = extract_resume(RESUME_PATH)
+    resume_analysis = run_analysis(request.jd_text, resume_text)
+    save_analysis(request.jd_text, RESUME_PATH, resume_analysis)
+    return resume_analysis 
+
+@app.get("/history")
+async def get_history():
+    records = load_all()
+    return {"history": records}
