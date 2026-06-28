@@ -1,25 +1,15 @@
-import os
 import re
 from anthropic import Anthropic
-from dotenv import load_dotenv
+from src.config import ANTHROPIC_API_KEY, LLM_MODEL, LLM_MAX_TOKENS
+from src.llm.prompts import SYSTEM_PROMPT
 
-load_dotenv()
-client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+client = Anthropic(api_key=ANTHROPIC_API_KEY)
 
 def analyze(jd, resume):
     response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=800,
-        system="""You are a resume screener. Given a JD and resume, output exactly in this format:
-
-COMPANY: company name extracted from JD or "Unknown" if not found
-ROLE: job title extracted from JD
-MATCH: Strong / Partial / Weak
-SCORE: X/10 core requirements met
-GAPS: bullet list of missing or weak required skills
-SUGGESTIONS: 2-3 specific edits to strengthen this resume for this role
-
-Be direct. No preamble.""",
+        model=LLM_MODEL,
+        max_tokens=int(LLM_MAX_TOKENS),
+        system=SYSTEM_PROMPT,
         messages=[
             {
                 "role": "user",
