@@ -4,8 +4,10 @@ import uuid
 import re
 from datetime import datetime
 import pymupdf
+from sqlalchemy.orm import Session
 from src.config import UPLOADED_DIRS, RESUMES_FILE
 from src.resumes.exceptions import ResumeNotFoundException
+from src.resumes.models import Resume
 
 os.makedirs(UPLOADED_DIRS, exist_ok=True)
 
@@ -25,33 +27,29 @@ def get_file_path(filename: str) -> str:
     return path
 
 # ── metadata ──────────────────────────────────────────────────
-def save_metadata(filename: str, label: str) -> dict:
-    """Save resume metadata to resumes.json, return record"""
-    resumes = get_all()
-    record = {
-        "id":          str(uuid.uuid4()),
-        "label":       label,
-        "filename":    filename,
-        "uploaded_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    }
-    resumes.append(record)
-    with open(RESUMES_FILE, "w") as f:
-        json.dump(resumes, f, indent=2)
-    return record
+def save_metadata(db: Session, filename: str, label: str) -> Resume:
+    """Save resume metadata to db, return record"""
+    resume = Resume(
+        id=str(uuid.uuid4()),
+        label=label,
+        filename=filename,
+        uploaded_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    )
+    db.add(resume)
+    db.commit()
+    db.refresh(resume)
+    return resume
 
-def get_all() -> list:
+def get_all(db: Session) -> list[Resume]:
     """Return all resume metadata records"""
-    if not os.path.exists(RESUMES_FILE):
-        return []
-    with open(RESUMES_FILE, "r") as f:
-        return json.load(f)
+    return db.query(Resume).all()
 
-def get_by_id(resume_id: str) -> dict:
+def get_by_id(db: Session,resume_id: str) -> Resume:
     """Find resume by ID, raise if not found"""
-    for resume in get_all():
-        if resume["id"] == resume_id:
-            return resume
-    raise ResumeNotFoundException(resume_id)
+    resume = db.query(Resume).filter(Resume.id == resume_id).first()
+    if not resume:
+        raise ResumeNotFoundException(resume_id)
+    return resume
 
 # ── extraction ────────────────────────────────────────────────
 def extract_text(file_path: str) -> str:

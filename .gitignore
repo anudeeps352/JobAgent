@@ -1,8 +1,32 @@
+# environment
 venv/
 .env
+.env.docker
+
+# python
 __pycache__/
-*.pdf
 *.pyc
-*.txt
-*.json
+*.pyo
+
+# files
+*.pdf
 uploaded_files/
+
+# data (local JSON files from earlier phases)
+results.json
+resumes.json
+
+# database
+*.db
+*.sqlite
+
+# alembic (don't ignore alembic itself, just local overrides)
+alembic/versions/*.pyc
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

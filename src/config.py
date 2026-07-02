@@ -13,6 +13,9 @@ UPLOADED_DIRS = "uploaded_files"
 RESUMES_FILE  = "resumes.json"
 RESULTS_FILE  = "results.json"
 
+# Database
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
 # Application
 VALID_STATUSES = ["applied", "oa", "interviewing", "offer", "rejected", "ghosted"]
 STALE_DAYS     = 14
