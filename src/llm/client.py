@@ -34,10 +34,13 @@ def parse_response(text):
         match = re.search(rf'^{label}:\s*(.+)$', text, re.MULTILINE)
         return match.group(1).strip() if match else "Unknown"
 
+    score_raw = extract("SCORE")
+    score = score_raw.split(" ")[0]  
+
     return {
         "company":       extract("COMPANY"),
         "role":          extract("ROLE"),
         "match":         extract("MATCH"),
-        "score":         extract("SCORE"),
+        "score":         score,
         "full_analysis": text
     }

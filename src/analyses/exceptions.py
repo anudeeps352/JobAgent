@@ -2,9 +2,9 @@ class DuplicateJDException(Exception):
     def __init__(self, company: str, role: str, timestamp: str):
         super().__init__(f"Already analyzed {role} at {company} on {timestamp}")
 
-class ApplicationNotFoundException(Exception):
+class AnalysisNotFoundException(Exception):
     def __init__(self, record_id: str):
-        super().__init__(f"Application not found: {record_id}")
+        super().__init__(f"Analysis not found: {record_id}")
 
 class InvalidStatusException(Exception):
     VALID = ["applied", "oa", "interviewing", "offer", "rejected", "ghosted"]

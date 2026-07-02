@@ -1,0 +1,33 @@
+# environment
+venv/
+.env
+.env.docker
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+
+# data files
+results.json
+resumes.json
+*.db
+*.sqlite
+
+# uploaded files (mounted as volume anyway)
+uploaded_files/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# git
+.git
+.gitignore
+
+# docs
+README.md

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from src.resumes.router import router as resumes_router
-from src.applications.router import router as applications_router
+from src.analyses.router import router as applications_router
 
 app = FastAPI(title="Job Hunt Agent")
 
