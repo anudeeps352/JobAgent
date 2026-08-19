@@ -15,6 +15,7 @@ uploaded_files/
 # data (local JSON files from earlier phases)
 results.json
 resumes.json
+*.json
 
 # database
 *.db

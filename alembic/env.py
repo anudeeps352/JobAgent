@@ -3,6 +3,7 @@ import sys
 import os
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
+from dotenv import load_dotenv
 
 from alembic import context
 
@@ -15,6 +16,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+
+# Load local .env values when running Alembic outside Docker.
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
+
+# Prefer the runtime DATABASE_URL so Docker and local runs stay in sync.
+database_url = os.getenv("DATABASE_URL")
+if database_url:
+    config.set_main_option("sqlalchemy.url", database_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
