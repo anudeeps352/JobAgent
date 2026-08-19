@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import joinedload
 from src.analyses.models import Analysis
 from src.analyses.exceptions import AnalysisNotFoundException, InvalidStatusException
 from src.config import VALID_STATUSES
@@ -12,8 +13,10 @@ def create(db: Session, resume_id: str, jd_id: str, analysis: dict) -> Analysis:
         jd_id=jd_id,
         match=analysis["match"],
         score=analysis["score"],
+        gaps=analysis.get("gaps", []),
+        suggestions=analysis.get("suggestions", []),
         full_analysis=analysis["full_analysis"],
-        status=None,
+        status="applied",
         analyzed_at=datetime.now()
     )
     db.add(record)
@@ -22,10 +25,16 @@ def create(db: Session, resume_id: str, jd_id: str, analysis: dict) -> Analysis:
     return record
 
 def get_all(db: Session) -> list[Analysis]:
-    return db.query(Analysis).all()
+    return db.query(Analysis).options(
+        joinedload(Analysis.resume),
+        joinedload(Analysis.job_description),
+    ).all()
 
 def get_by_id(db: Session, analysis_id: str) -> Analysis:
-    record = db.query(Analysis).filter(Analysis.id == analysis_id).first()
+    record = db.query(Analysis).options(
+        joinedload(Analysis.resume),
+        joinedload(Analysis.job_description),
+    ).filter(Analysis.id == analysis_id).first()
     if not record:
         raise AnalysisNotFoundException(analysis_id)
     return record

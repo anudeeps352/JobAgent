@@ -1,4 +1,4 @@
-from sqlalchemy import String, Text, DateTime, ForeignKey
+from sqlalchemy import String, Text, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
@@ -13,6 +13,8 @@ class Analysis(Base):
     jd_id:         Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("job_descriptions.id"))
     match:         Mapped[str] = mapped_column(String(20))
     score:         Mapped[str] = mapped_column(String(50))
+    gaps:          Mapped[list[str]] = mapped_column(JSON, default=list)
+    suggestions:   Mapped[list[str]] = mapped_column(JSON, default=list)
     full_analysis: Mapped[str] = mapped_column(Text)
     status:        Mapped[str | None] = mapped_column(String(50), nullable=True)
     analyzed_at:   Mapped[datetime] = mapped_column(DateTime, default=datetime.now)

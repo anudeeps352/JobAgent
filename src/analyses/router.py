@@ -4,14 +4,30 @@ from src.database import get_db
 from src.analyses import service as analyses_service
 from src.resumes import service as resume_service
 from src.job_descriptions import service as jd_service
-from src.analyses.schemas import AnalyzeRequest, StatusUpdate
+from src.analyses.schemas import AnalyzeRequest, ApplicationRecord, HistoryResponse, StatusUpdate
 from src.analyses.exceptions import AnalysisNotFoundException, InvalidStatusException
 from src.resumes.exceptions import ResumeNotFoundException
 from src.llm.client import analyze
 
 router = APIRouter(tags=["analyses"])
 
-@router.post("/analyze")
+
+def serialize_analysis(record) -> ApplicationRecord:
+    return ApplicationRecord(
+        id=record.id,
+        timestamp=record.analyzed_at.strftime("%Y-%m-%d %H:%M:%S"),
+        company=record.job_description.company,
+        role=record.job_description.role,
+        match=record.match,
+        score=record.score,
+        status=record.status or "applied",
+        resume_used=record.resume.filename,
+        gaps=record.gaps or [],
+        suggestions=record.suggestions or [],
+        full_analysis=record.full_analysis,
+    )
+
+@router.post("/analyze", response_model=ApplicationRecord)
 async def analyze_resume(request: AnalyzeRequest, db: Session = Depends(get_db)):
     # dedup check
     jd_hash = jd_service.compute_jd_hash(request.jd_text)
@@ -39,17 +55,18 @@ async def analyze_resume(request: AnalyzeRequest, db: Session = Depends(get_db))
     # save analysis
     record = analyses_service.create(db, resume.id, jd_record.id, analysis)
 
-    return record
+    return serialize_analysis(record)
 
-@router.get("/history")
+@router.get("/history", response_model=HistoryResponse)
 async def get_history(db: Session = Depends(get_db)):
-    return {"history": analyses_service.get_all(db)}
+    history = analyses_service.get_all(db)
+    return {"history": [serialize_analysis(record) for record in history]}
 
 @router.patch("/status/{analysis_id}")
 async def update_status(analysis_id: str, request: StatusUpdate, db: Session = Depends(get_db)):
     try:
         record = analyses_service.update_status(db, analysis_id, request.status)
-        return {"message": f"Status updated to '{request.status}'", "record": record}
+        return {"message": f"Status updated to '{request.status}'", "record": serialize_analysis(record)}
     except AnalysisNotFoundException:
         raise HTTPException(status_code=404, detail="Analysis not found")
     except InvalidStatusException as e:

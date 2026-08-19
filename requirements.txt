@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+alembic
+psycopg2-binary
+anthropic
+python-dotenv
+pydantic
+python-multipart
+pypdf
+pymupdf
