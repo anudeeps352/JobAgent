@@ -28,7 +28,13 @@ def get_all(db: Session) -> list[Analysis]:
     return db.query(Analysis).options(
         joinedload(Analysis.resume),
         joinedload(Analysis.job_description),
-    ).all()
+    ).order_by(Analysis.analyzed_at.desc()).all()
+
+def get_by_resume_and_jd(db: Session, resume_id: str, jd_id: str) -> Analysis | None:
+    return db.query(Analysis).filter(
+        Analysis.resume_id == resume_id,
+        Analysis.jd_id == jd_id,
+    ).first()
 
 def get_by_id(db: Session, analysis_id: str) -> Analysis:
     record = db.query(Analysis).options(
