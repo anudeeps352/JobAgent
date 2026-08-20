@@ -11,6 +11,7 @@ from src.database import Base
 from src.resumes.models import Resume
 from src.job_descriptions.models import JobDescription
 from src.analyses.models import Analysis
+from src.applications.models import Application
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 # this is the Alembic Config object, which provides

@@ -8,7 +8,7 @@ class ApplicationRecord(BaseModel):
     role: str
     match: str
     score: str
-    status: str
+    status: str | None = None
     resume_used: str
     gaps: list[str] = Field(default_factory=list)
     suggestions: list[str] = Field(default_factory=list)
@@ -24,3 +24,7 @@ class StatusUpdate(BaseModel):
 
 class HistoryResponse(BaseModel):
     history: list[ApplicationRecord]
+
+
+class AnalysesResponse(BaseModel):
+    analyses: list[ApplicationRecord]

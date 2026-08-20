@@ -4,8 +4,7 @@ from src.database import get_db
 from src.analyses import service as analyses_service
 from src.resumes import service as resume_service
 from src.job_descriptions import service as jd_service
-from src.analyses.schemas import AnalyzeRequest, ApplicationRecord, HistoryResponse, StatusUpdate
-from src.analyses.exceptions import AnalysisNotFoundException, InvalidStatusException
+from src.analyses.schemas import AnalyzeRequest, ApplicationRecord, AnalysesResponse, HistoryResponse, StatusUpdate
 from src.resumes.exceptions import ResumeNotFoundException
 from src.llm.client import analyze
 
@@ -20,7 +19,7 @@ def serialize_analysis(record) -> ApplicationRecord:
         role=record.job_description.role,
         match=record.match,
         score=record.score,
-        status=record.status or "applied",
+        status=record.status,
         resume_used=record.resume.filename,
         gaps=record.gaps or [],
         suggestions=record.suggestions or [],
@@ -29,13 +28,13 @@ def serialize_analysis(record) -> ApplicationRecord:
 
 @router.post("/analyze", response_model=ApplicationRecord)
 async def analyze_resume(request: AnalyzeRequest, db: Session = Depends(get_db)):
-    # dedup check
+    # Reuse the job description, but deduplicate only the same resume/job pair.
     jd_hash = jd_service.compute_jd_hash(request.jd_text)
     existing_jd = jd_service.get_by_hash(db, jd_hash)
-    if existing_jd:
+    if existing_jd and analyses_service.get_by_resume_and_jd(db, request.resume_id, existing_jd.id):
         raise HTTPException(
             status_code=409,
-            detail=f"Already analyzed this JD — company: {existing_jd.company}, role: {existing_jd.role}"
+            detail=f"This resume has already been analyzed for {existing_jd.company} - {existing_jd.role}"
         )
 
     # get resume
@@ -50,24 +49,27 @@ async def analyze_resume(request: AnalyzeRequest, db: Session = Depends(get_db))
     analysis = analyze(request.jd_text, resume_text)
 
     # save JD
-    jd_record = jd_service.create(db, request.jd_text, analysis["company"], analysis["role"])
+    jd_record = existing_jd or jd_service.create(
+        db, request.jd_text, analysis["company"], analysis["role"]
+    )
 
     # save analysis
     record = analyses_service.create(db, resume.id, jd_record.id, analysis)
 
     return serialize_analysis(record)
 
-@router.get("/history", response_model=HistoryResponse)
+@router.get("/analyses", response_model=AnalysesResponse)
+async def get_analyses(db: Session = Depends(get_db)):
+    return {"analyses": [serialize_analysis(record) for record in analyses_service.get_all(db)]}
+
+
+@router.get("/history", response_model=HistoryResponse, include_in_schema=False)
 async def get_history(db: Session = Depends(get_db)):
-    history = analyses_service.get_all(db)
-    return {"history": [serialize_analysis(record) for record in history]}
+    return {"history": [serialize_analysis(record) for record in analyses_service.get_all(db)]}
 
 @router.patch("/status/{analysis_id}")
 async def update_status(analysis_id: str, request: StatusUpdate, db: Session = Depends(get_db)):
-    try:
-        record = analyses_service.update_status(db, analysis_id, request.status)
-        return {"message": f"Status updated to '{request.status}'", "record": serialize_analysis(record)}
-    except AnalysisNotFoundException:
-        raise HTTPException(status_code=404, detail="Analysis not found")
-    except InvalidStatusException as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    raise HTTPException(
+        status_code=410,
+        detail="Analysis records do not have application status. Create an application first.",
+    )

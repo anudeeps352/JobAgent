@@ -21,3 +21,4 @@ class Analysis(Base):
 
     resume:          Mapped["Resume"] = relationship("Resume", back_populates="analyses")
     job_description: Mapped["JobDescription"] = relationship("JobDescription", back_populates="analyses")
+    application = relationship("Application", back_populates="analysis", uselist=False)

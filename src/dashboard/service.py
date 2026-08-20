@@ -4,11 +4,15 @@ from collections import Counter
 from sqlalchemy.orm import Session, joinedload
 
 from src.analyses.models import Analysis
+from src.applications.models import Application
 
 
 def _parse_score(score: str) -> int:
     match = re.search(r"\d+", score)
-    return int(match.group()) if match else 0
+    if not match:
+        return 0
+    value = int(match.group())
+    return value * 10 if "/10" in score else value
 
 
 def _company_initials(company: str) -> str:
@@ -18,12 +22,18 @@ def _company_initials(company: str) -> str:
 
 
 def get_summary(db: Session) -> dict:
-    records = db.query(Analysis).options(
+    analyses = db.query(Analysis).options(
         joinedload(Analysis.resume),
         joinedload(Analysis.job_description),
-    ).order_by(Analysis.analyzed_at.desc()).all()
+    ).all()
+    records = db.query(Application).options(
+        joinedload(Application.analysis),
+        joinedload(Application.resume),
+        joinedload(Application.job_description),
+    ).order_by(Application.created_at.desc()).all()
 
-    total_applied = len(records)
+    total_applications = len(records)
+    submitted = [record for record in records if (record.status or "").upper() != "PLANNED"]
     interviewing = sum(1 for record in records if (record.status or "").upper() == "INTERVIEWING")
     offers = sum(1 for record in records if (record.status or "").upper() == "OFFER")
     active_apps = sum(
@@ -31,14 +41,14 @@ def get_summary(db: Session) -> dict:
         for record in records
         if (record.status or "").upper() in {"APPLIED", "OA", "OA SENT", "INTERVIEWING"}
     )
-    response_rate = round((interviewing + offers) / total_applied * 100, 1) if total_applied else 0.0
+    response_rate = round((interviewing + offers) / len(submitted) * 100, 1) if submitted else 0.0
 
     status_order = ["APPLIED", "OA", "INTERVIEWING", "OFFER"]
     stage_counts = Counter((record.status or "APPLIED").upper() for record in records)
     funnel_stages = []
     for index, stage in enumerate(status_order):
         value = stage_counts.get(stage, 0)
-        width_percent = round((value / total_applied) * 100) if total_applied else 0
+        width_percent = round((value / total_applications) * 100) if total_applications else 0
         funnel_stages.append(
             {
                 "label": {
@@ -49,12 +59,12 @@ def get_summary(db: Session) -> dict:
                 }[stage],
                 "value": value,
                 "width_percent": width_percent,
-                "drop_percent": None if index == 0 or not total_applied else f"-{max(0, 100 - width_percent)}%",
+                "drop_percent": None if index == 0 or not total_applications else f"-{max(0, 100 - width_percent)}%",
             }
         )
 
     skill_counts = Counter()
-    for record in records:
+    for record in analyses:
         skill_counts.update(record.gaps or [])
 
     skill_gaps = [
@@ -64,12 +74,12 @@ def get_summary(db: Session) -> dict:
 
     recent_applications = [
         {
-            "company": record.job_description.company,
-            "company_initials": _company_initials(record.job_description.company),
-            "role": record.job_description.role,
-            "match_score": _parse_score(record.score),
-            "status": (record.status or "APPLIED").upper(),
-            "date": record.analyzed_at.strftime("%Y-%m-%d"),
+            "company": record.company,
+            "company_initials": _company_initials(record.company),
+            "role": record.role,
+            "match_score": _parse_score(record.analysis.score) if record.analysis else 0,
+            "status": (record.status or "PLANNED").upper(),
+            "date": (record.applied_at or record.created_at).strftime("%Y-%m-%d"),
         }
         for record in records[:3]
     ]
@@ -85,8 +95,8 @@ def get_summary(db: Session) -> dict:
     return {
         "stats": [
             {
-                "label": "TOTAL APPLIED",
-                "value": total_applied,
+                "label": "TOTAL APPLICATIONS",
+                "value": total_applications,
                 "delta_value": "12%",
                 "delta_direction": "up",
             },

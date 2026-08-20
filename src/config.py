@@ -17,5 +17,5 @@ RESULTS_FILE  = "results.json"
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 # Application
-VALID_STATUSES = ["applied", "oa", "interviewing", "offer", "rejected", "ghosted"]
+VALID_STATUSES = ["planned", "applied", "oa", "interviewing", "offer", "rejected", "ghosted", "withdrawn"]
 STALE_DAYS     = 14
